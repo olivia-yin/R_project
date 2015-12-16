@@ -1,0 +1,38 @@
+# Using openxlsx to load data
+setwd("/Users/yy/Desktop/2015- Data Analysis/r")
+install.packages("openxlsx")
+install.packages("reshape2")
+install.packages("forecast")
+install.packages("xts")
+install.packages("timeDate")
+library("openxlsx")
+mydf <- read.xlsx("Time forecasting.xlsx", sheet = 1, startRow = 1, colNames = TRUE)
+str(mydf)
+# Convert Time.stamp to POSIXLT format.
+mydf$Time.stamp <- as.Date.numeric(mydf$Time.stamp, origin = "1970-01-01")
+mydf$Time.stamp <- as.POSIXlt(mydf$Time.stamp)
+# Sorting data by Time.stamp
+t_mydf <- mydf[order(mydf$Time.stamp),]
+
+# Use cast to count perday visitors and draw trend line
+library(reshape2)
+c_mydf <- dcast(t_mydf, Time.stamp ~ code)
+c_mydf$total <- rowSums(c_mydf[, c(2, 3, 4, 5)])
+trend1 <- plot(c_mydf[,1],c_mydf[,6], type="l",
+     lwd=2, col="red", xlab="Time", ylab="N of visitors",main = "Visitors " )
+# Use package xts to create time series object
+library("xts")
+myts <- xts(c_mydf$total, order.by = as.POSIXct(c_mydf$Time.stamp))
+plot(myts, xlab = "Time", ylab = "Number of visitors", main = "DMV visitors time series" )
+# Use forecast package to decomposition
+library("forecast")
+fit1 <- stl(x = myts, s.window = "periodic" )
+monthplot(myts)
+seasonplot(myts)
+
+# Automated forecasting using an exponential model
+fit <- ets(myts)
+plot(fit)
+# Automated forecasting using an ARIMA model
+fit2 <- auto.arima(myts)
+
